@@ -14,7 +14,7 @@ class CalculateTest(unittest.TestCase):
         self.assertAlmostEqual(res.pe, 20)
         self.assertAlmostEqual(res.peg, 20 / 15)
         self.assertAlmostEqual(res.upside_pct, -25)
-        self.assertEqual(res.verdict, "Puternic supraevaluată")
+        self.assertEqual(res.verdict, "Strongly overvalued")
 
     def test_dividend_adjusted(self):
         res = calculate(LynchInput("Test", price=50, eps=4, growth=10, dividend=1.5))
@@ -78,6 +78,19 @@ class ParseNumberTest(unittest.TestCase):
 
 
 class StorageTest(unittest.TestCase):
+    def test_legacy_migration(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            legacy = Path(tmp) / "evaluari.db"
+            st = Storage(legacy)
+            inp = LynchInput("Old Co", price=100, eps=5, growth=15)
+            st.save(inp, calculate(inp))
+            st.conn.execute("UPDATE evaluations SET verdict = 'Puternic supraevaluată'")
+            st.conn.commit()
+            st.conn.close()
+            st = Storage(Path(tmp) / "valuations.db")
+            self.assertFalse(legacy.exists())
+            self.assertEqual(st.list()[0]["verdict"], "Strongly overvalued")
+
     def test_permissions(self):
         with tempfile.TemporaryDirectory() as tmp:
             db = Path(tmp) / "data" / "x.db"
@@ -97,7 +110,7 @@ class StorageTest(unittest.TestCase):
                 row = list(csv.DictReader(f))[0]
             self.assertTrue(row["company"].startswith("'="))
             self.assertTrue(row["notes"].startswith("'@"))
-            self.assertTrue(row["upside_pct"].startswith("-"))  # numerele rămân numere
+            self.assertTrue(row["upside_pct"].startswith("-"))  # numbers stay numbers
 
     def test_save_list_export_delete(self):
         with tempfile.TemporaryDirectory() as tmp:

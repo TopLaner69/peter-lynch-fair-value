@@ -1,4 +1,4 @@
-"""Stocarea evaluărilor într-o bază de date SQLite locală."""
+"""Stores valuations in a local SQLite database."""
 
 import csv
 import sqlite3
@@ -7,9 +7,19 @@ from pathlib import Path
 
 from lynch import LynchInput, LynchResult
 
-# În afara aplicației, ca datele să rămână și după reinstalarea/actualizarea ei.
+# Outside the app bundle, so the data survives reinstalls and updates.
 DATA_DIR = Path.home() / "Library" / "Application Support" / "Peter Lynch Fair Value"
-DB_PATH = DATA_DIR / "evaluari.db"
+DB_PATH = DATA_DIR / "valuations.db"
+LEGACY_DB_NAME = "evaluari.db"  # file name used by earlier versions
+
+# Verdicts saved by earlier (Romanian) versions, translated on startup.
+LEGACY_VERDICTS = {
+    "Puternic subevaluată": "Strongly undervalued",
+    "Subevaluată": "Undervalued",
+    "Evaluată corect": "Fairly valued",
+    "Supraevaluată": "Overvalued",
+    "Puternic supraevaluată": "Strongly overvalued",
+}
 
 COLUMNS = [
     "id", "created_at", "company", "ticker", "currency", "price", "eps", "growth",
@@ -43,12 +53,12 @@ CREATE INDEX IF NOT EXISTS idx_company ON evaluations(company);
 """
 
 
-# Caractere cu care Excel/Numbers încep o formulă (OWASP: CSV injection).
+# Characters that make Excel/Numbers treat a cell as a formula (OWASP: CSV injection).
 FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 
 
 def csv_safe(value):
-    """Textul care ar fi interpretat ca formulă primește un apostrof în față."""
+    """Prefix text that would be interpreted as a formula with an apostrophe."""
     if isinstance(value, str) and value.startswith(FORMULA_PREFIXES):
         return "'" + value
     return value
@@ -56,14 +66,20 @@ def csv_safe(value):
 
 class Storage:
     def __init__(self, path: Path = DB_PATH):
-        # Doar utilizatorul curent poate citi sau modifica datele.
+        # Only the current user can read or modify the data.
         path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         path.parent.chmod(0o700)
+        legacy = path.with_name(LEGACY_DB_NAME)
+        if not path.exists() and legacy.exists():
+            legacy.rename(path)
         path.touch(mode=0o600, exist_ok=True)
-        path.chmod(0o600)  # SQLite creează fișierele jurnal cu aceleași permisiuni
+        path.chmod(0o600)  # SQLite creates journal files with the same permissions
         self.conn = sqlite3.connect(path)
         self.conn.row_factory = sqlite3.Row
         self.conn.executescript(SCHEMA)
+        with self.conn:
+            self.conn.executemany("UPDATE evaluations SET verdict = ? WHERE verdict = ?",
+                                  [(en, ro) for ro, en in LEGACY_VERDICTS.items()])
 
     def save(self, inp: LynchInput, res: LynchResult) -> int:
         row = {

@@ -1,7 +1,7 @@
-# Dependențe pentru construirea aplicației .app (aplicația în sine folosește doar
-# biblioteca standard Python). Versiuni și hash-uri fixate: pip refuză orice fișier
-# care diferă, deci un pachet modificat pe PyPI nu poate ajunge în build.
-# Instalare: .venv/bin/pip install --require-hashes -r requirements-build.txt
+# Dependencies for building the .app (the app itself uses only the Python standard
+# library). Versions and hashes are pinned: pip refuses any file that differs, so a
+# package tampered with on PyPI cannot get into the build.
+# Install: .venv/bin/pip install --require-hashes -r requirements-build.txt
 altgraph==0.17.5 \
     --hash=sha256:f3a22400bce1b0c701683820ac4f3b159cd301acab067c51c653e06961600597
 macholib==1.16.4 \

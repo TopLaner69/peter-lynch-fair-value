@@ -1,22 +1,22 @@
-"""Calculul fair value după metoda lui Peter Lynch.
+"""Fair value calculation using Peter Lynch's method.
 
-Formule folosite:
-  * Fair P/E = rata de creștere a EPS (PEG = 1)
-      Fair value = EPS × creștere (%)
-  * Varianta ajustată cu dividend (Lynch, "One Up on Wall Street"):
-      Fair value = EPS × (creștere % + randament dividend %)
-  * Lynch ratio = (creștere % + randament dividend %) / P/E
-      < 1  -> neatractivă, ~1.5 -> OK, >= 2 -> foarte atractivă
+Formulas:
+  * Fair P/E = EPS growth rate (PEG = 1)
+      Fair value = EPS × growth (%)
+  * Dividend-adjusted version (Lynch, "One Up on Wall Street"):
+      Fair value = EPS × (growth % + dividend yield %)
+  * Lynch ratio = (growth % + dividend yield %) / P/E
+      < 1  -> unattractive, ~1.5 -> OK, >= 2 -> very attractive
 """
 
 import math
 import re
 from dataclasses import dataclass
 
-# Lynch considera creșteri peste ~25%/an nesustenabile pe termen lung.
+# Lynch considered growth above ~25%/year unsustainable in the long run.
 GROWTH_CAP = 25.0
 
-# Limite de validare: resping valorile absurde înainte să ajungă în baza de date.
+# Validation limits: reject absurd values before they reach the database.
 MAX_PRICE = 10_000_000
 MIN_EPS = 0.0001
 MAX_GROWTH = 100.0
@@ -30,10 +30,10 @@ CURRENCY_RE = re.compile(r"[A-Za-z]{3}")
 @dataclass
 class LynchInput:
     company: str
-    price: float          # prețul curent al acțiunii
-    eps: float            # EPS pe ultimele 12 luni (TTM)
-    growth: float         # creșterea anuală estimată a EPS, în %
-    dividend: float = 0.0  # dividend anual pe acțiune
+    price: float          # current share price
+    eps: float            # trailing twelve months (TTM) EPS
+    growth: float         # expected annual EPS growth, in %
+    dividend: float = 0.0  # annual dividend per share
     ticker: str = ""
     currency: str = "USD"
     cap_growth: bool = True
@@ -48,47 +48,47 @@ class LynchResult:
     peg: float
     lynch_ratio: float
     fair_value_basic: float
-    fair_value: float      # valoarea principală (ajustată cu dividend)
+    fair_value: float      # main value (dividend-adjusted)
     upside_pct: float
     verdict: str
     warnings: list
 
 
 def validate(inp: LynchInput) -> None:
-    for name, value in (("Prețul", inp.price), ("EPS", inp.eps), ("Creșterea", inp.growth),
-                        ("Dividendul", inp.dividend)):
+    for name, value in (("Price", inp.price), ("EPS", inp.eps), ("Growth", inp.growth),
+                        ("Dividend", inp.dividend)):
         if not isinstance(value, (int, float)) or not math.isfinite(value):
-            raise ValueError(f"{name} trebuie să fie un număr valid.")
+            raise ValueError(f"{name} must be a valid number.")
 
     company = inp.company.strip()
     if not company:
-        raise ValueError("Introdu numele companiei.")
+        raise ValueError("Enter the company name.")
     if len(company) > MAX_COMPANY_LEN:
-        raise ValueError(f"Numele companiei poate avea cel mult {MAX_COMPANY_LEN} caractere.")
+        raise ValueError(f"The company name can be at most {MAX_COMPANY_LEN} characters.")
     if not TICKER_RE.fullmatch(inp.ticker.strip()):
-        raise ValueError("Ticker-ul poate conține doar litere, cifre, punct sau cratimă "
-                         f"(max. {MAX_TICKER_LEN} caractere).")
+        raise ValueError("The ticker can only contain letters, digits, dots or hyphens "
+                         f"(max. {MAX_TICKER_LEN} characters).")
     if not CURRENCY_RE.fullmatch(inp.currency.strip()):
-        raise ValueError("Moneda trebuie să fie un cod de 3 litere (ex. USD).")
+        raise ValueError("The currency must be a 3-letter code (e.g. USD).")
     if len(inp.notes) > MAX_NOTES_LEN:
-        raise ValueError(f"Notele pot avea cel mult {MAX_NOTES_LEN} caractere.")
+        raise ValueError(f"Notes can be at most {MAX_NOTES_LEN} characters.")
 
     if not 0 < inp.price <= MAX_PRICE:
-        raise ValueError(f"Prețul trebuie să fie între 0 și {MAX_PRICE:,.0f}.")
+        raise ValueError(f"The price must be between 0 and {MAX_PRICE:,.0f}.")
     if inp.eps <= 0:
-        raise ValueError("Formula lui Lynch nu se aplică pentru EPS negativ sau zero "
-                         "(compania nu are profit).")
+        raise ValueError("Lynch's formula does not apply to zero or negative EPS "
+                         "(the company is not profitable).")
     if inp.eps < MIN_EPS or inp.eps > inp.price:
-        raise ValueError(f"EPS trebuie să fie între {MIN_EPS} și prețul acțiunii "
-                         "(un P/E sub 1 indică o greșeală de introducere).")
+        raise ValueError(f"EPS must be between {MIN_EPS} and the share price "
+                         "(a P/E below 1 suggests a typing mistake).")
     if inp.growth <= 0:
-        raise ValueError("Formula lui Lynch necesită o rată de creștere pozitivă.")
+        raise ValueError("Lynch's formula requires a positive growth rate.")
     if inp.growth > MAX_GROWTH:
-        raise ValueError(f"Creșterea poate fi de cel mult {MAX_GROWTH:g}% pe an.")
+        raise ValueError(f"Growth can be at most {MAX_GROWTH:g}% per year.")
     if inp.dividend < 0:
-        raise ValueError("Dividendul nu poate fi negativ.")
+        raise ValueError("The dividend cannot be negative.")
     if inp.dividend >= inp.price:
-        raise ValueError("Dividendul anual trebuie să fie mai mic decât prețul acțiunii.")
+        raise ValueError("The annual dividend must be lower than the share price.")
 
 
 def calculate(inp: LynchInput) -> LynchResult:
@@ -98,14 +98,14 @@ def calculate(inp: LynchInput) -> LynchResult:
     growth_used = inp.growth
     if inp.cap_growth and inp.growth > GROWTH_CAP:
         growth_used = GROWTH_CAP
-        warnings.append(f"Creșterea de {inp.growth:g}% a fost plafonată la {GROWTH_CAP:g}% "
-                        "(Lynch considera creșterile mai mari nesustenabile).")
+        warnings.append(f"Growth of {inp.growth:g}% was capped at {GROWTH_CAP:g}% "
+                        "(Lynch considered higher growth rates unsustainable).")
     elif inp.growth > GROWTH_CAP:
-        warnings.append(f"Creștere de {inp.growth:g}% — peste {GROWTH_CAP:g}% rezultatul "
-                        "poate fi prea optimist.")
+        warnings.append(f"Growth of {inp.growth:g}% — above {GROWTH_CAP:g}% the result "
+                        "may be too optimistic.")
     if growth_used < 5:
-        warnings.append("Creștere sub 5%: Lynch numea astfel de companii 'slow growers'; "
-                        "formula e mai puțin relevantă pentru ele.")
+        warnings.append("Growth below 5%: Lynch called such companies 'slow growers'; "
+                        "the formula is less relevant for them.")
 
     dividend_yield = inp.dividend / inp.price * 100
     pe = inp.price / inp.eps
@@ -117,7 +117,7 @@ def calculate(inp: LynchInput) -> LynchResult:
     upside_pct = (fair_value / inp.price - 1) * 100
     results = (dividend_yield, pe, peg, lynch_ratio, fair_value_basic, fair_value, upside_pct)
     if not all(math.isfinite(x) for x in results):
-        raise ValueError("Datele introduse duc la un rezultat invalid; verifică valorile.")
+        raise ValueError("The values entered lead to an invalid result; please check them.")
 
     return LynchResult(
         growth_used=growth_used,
@@ -136,21 +136,21 @@ def calculate(inp: LynchInput) -> LynchResult:
 def verdict(price: float, fair_value: float) -> str:
     ratio = price / fair_value
     if ratio <= 0.7:
-        return "Puternic subevaluată"
+        return "Strongly undervalued"
     if ratio < 0.95:
-        return "Subevaluată"
+        return "Undervalued"
     if ratio <= 1.05:
-        return "Evaluată corect"
+        return "Fairly valued"
     if ratio <= 1.3:
-        return "Supraevaluată"
-    return "Puternic supraevaluată"
+        return "Overvalued"
+    return "Strongly overvalued"
 
 
 def lynch_ratio_label(ratio: float) -> str:
     if ratio < 1:
-        return "neatractivă"
+        return "unattractive"
     if ratio < 1.5:
-        return "acceptabilă"
+        return "acceptable"
     if ratio < 2:
-        return "bună"
-    return "excelentă"
+        return "good"
+    return "excellent"

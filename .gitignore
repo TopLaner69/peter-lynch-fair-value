@@ -1,4 +1,4 @@
-# Mediu virtual și rezultatele build-ului py2app
+# Virtual environment and py2app build output
 .venv/
 venv/
 build/
@@ -9,7 +9,7 @@ dist/
 __pycache__/
 *.py[cod]
 
-# Date personale: baze de date și exporturi
+# Personal data: databases and exports
 *.db
 *.db-journal
 *.sqlite

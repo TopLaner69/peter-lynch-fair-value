@@ -1,4 +1,4 @@
-"""Construiește aplicația macOS: vezi README, secțiunea „Reconstruire .app”."""
+"""Builds the macOS app: see the README, section "Rebuilding the .app"."""
 
 from setuptools import setup
 
@@ -9,8 +9,8 @@ setup(
         "py2app": {
             "iconfile": "AppIcon.icns",
             "includes": ["lynch", "storage"],
-            # Aplicația nu folosește rețeaua: scoatem SSL/OpenSSL și modulele de rețea,
-            # ca să nu includem cod (și vulnerabilități) de care nu avem nevoie.
+            # The app does not use the network: leave out SSL/OpenSSL and the network
+            # modules, so we don't ship code (and vulnerabilities) we don't need.
             "excludes": ["setuptools", "distutils", "pkg_resources", "unittest",
                          "ssl", "_ssl", "_hashlib", "http", "urllib.request", "ftplib",
                          "smtplib", "imaplib", "poplib", "xmlrpc", "asyncio",

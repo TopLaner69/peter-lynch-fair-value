@@ -1,4 +1,4 @@
-"""Peter Lynch Fair Value — aplicație desktop pentru macOS (Tkinter)."""
+"""Peter Lynch Fair Value — desktop app for macOS (Tkinter)."""
 
 import os
 import re
@@ -15,7 +15,7 @@ from storage import DB_PATH, Storage
 CURRENCIES = ["USD", "EUR", "RON", "GBP", "CHF", "JPY", "CAD"]
 NUMBER_RE = re.compile(r"-?\d+(\.\d+)?")
 
-# Paleta portocaliu / alb
+# Orange / white palette
 ORANGE = "#F26B1D"
 ORANGE_DARK = "#D4560F"
 ORANGE_SOFT = "#FFF1E6"
@@ -29,14 +29,14 @@ GREEN_SOFT = "#E3F5EA"
 RED = "#C8341F"
 RED_SOFT = "#FBE6E2"
 
-# Dimensiunea ferestrei pentru care fonturile au mărimea de bază.
+# Window size at which fonts have their base size.
 DESIGN_W, DESIGN_H = 1180, 820
-# Sub aceste lățimi (în pixeli) aranjarea se schimbă.
-STACK_BELOW = 900        # formularul și rezultatul unul sub altul
-FORM_ONE_COL_BELOW = 560  # câmpurile formularului pe o singură coloană
-# Coloanele din istoric rămase vizibile, în funcție de lățime.
+# Below these widths (in pixels) the layout changes.
+STACK_BELOW = 900        # form and result stacked vertically
+FORM_ONE_COL_BELOW = 560  # form fields in a single column
+# History columns that stay visible, depending on the width.
 HISTORY_COLUMNS = [
-    (1000, None),  # toate
+    (1000, None),  # all
     (800, ("created_at", "company", "ticker", "price", "growth", "fair_value",
            "upside_pct", "verdict")),
     (600, ("created_at", "company", "fair_value", "upside_pct", "verdict")),
@@ -48,11 +48,11 @@ def parse_number(text: str, field: str, required: bool = True) -> float:
     text = text.strip().replace(" ", "").replace(",", ".").replace("%", "")
     if not text:
         if required:
-            raise ValueError(f"Completează câmpul „{field}”.")
+            raise ValueError(f"Please fill in “{field}”.")
         return 0.0
-    # Doar numere zecimale simple: respinge „nan”, „inf”, notația 1e999 și textele lungi.
+    # Plain decimal numbers only: rejects "nan", "inf", 1e999 notation and long input.
     if len(text) > 20 or not NUMBER_RE.fullmatch(text):
-        raise ValueError(f"„{field}” trebuie să fie un număr (ai scris: {text[:20]}).")
+        raise ValueError(f"“{field}” must be a number (you typed: {text[:20]}).")
     return float(text)
 
 
@@ -72,7 +72,7 @@ class App(tk.Tk):
 
         self._setup_style()
         self.storage = Storage()
-        self.last = None  # (LynchInput, LynchResult) după ultimul calcul
+        self.last = None  # (LynchInput, LynchResult) from the last calculation
         self.scale = None
         self.eval_mode = None
         self.form_cols = None
@@ -83,8 +83,8 @@ class App(tk.Tk):
         notebook.pack(fill="both", expand=True, padx=20, pady=(14, 20))
         self.eval_tab = ttk.Frame(notebook, style="Page.TFrame", padding=(0, 14, 0, 0))
         self.history_tab = ttk.Frame(notebook, style="Page.TFrame", padding=(0, 14, 0, 0))
-        notebook.add(self.eval_tab, text="Evaluare nouă")
-        notebook.add(self.history_tab, text="Istoric evaluări")
+        notebook.add(self.eval_tab, text="New valuation")
+        notebook.add(self.history_tab, text="Valuation history")
         self.notebook = notebook
 
         self._build_scroll_area()
@@ -95,7 +95,7 @@ class App(tk.Tk):
         self._resize_job = None
         self.bind("<Configure>", self._on_configure)
         self.bind_all("<MouseWheel>", self._on_wheel)
-        try:  # Tk 9: scroll fin pe trackpad
+        try:  # Tk 9: smooth trackpad scrolling
             self.bind_all("<TouchpadScroll>", self._on_touchpad)
         except tk.TclError:
             pass
@@ -103,16 +103,16 @@ class App(tk.Tk):
         self._apply_responsive()
 
     def report_callback_exception(self, exc, val, tb):
-        # O eroare neprevăzută e afișată, nu ignorată în tăcere.
+        # An unexpected error is shown to the user instead of being silently ignored.
         traceback.print_exception(exc, val, tb)
-        messagebox.showerror("Eroare neașteptată",
-                             f"Operația nu a putut fi finalizată.\n\n{exc.__name__}: {val}",
+        messagebox.showerror("Unexpected error",
+                             f"The operation could not be completed.\n\n{exc.__name__}: {val}",
                              parent=self)
 
-    # ---------- Stil ----------
+    # ---------- Style ----------
     def _setup_style(self):
         family = tkfont.nametofont("TkDefaultFont").actual()["family"]
-        # Fonturi denumite: schimbarea mărimii lor actualizează toate widget-urile.
+        # Named fonts: changing their size updates every widget that uses them.
         self.font_sizes = {
             "base": (13, "normal"), "small": (11, "normal"), "label": (12, "bold"),
             "title": (20, "bold"), "subtitle": (12, "normal"), "section": (15, "bold"),
@@ -121,14 +121,14 @@ class App(tk.Tk):
         }
         self.f = {name: tkfont.Font(self, family=family, size=size, weight=weight)
                   for name, (size, weight) in self.font_sizes.items()}
-        # Culori pentru widget-urile clasice Tk (listă dropdown, câmp text).
+        # Colors for the classic Tk widgets (dropdown list, text field).
         self.option_add("*TCombobox*Listbox.background", WHITE)
         self.option_add("*TCombobox*Listbox.foreground", TEXT)
         self.option_add("*TCombobox*Listbox.selectBackground", ORANGE)
         self.option_add("*TCombobox*Listbox.selectForeground", WHITE)
 
         s = ttk.Style(self)
-        s.theme_use("clam")  # tema „aqua” ignoră culorile personalizate
+        s.theme_use("clam")  # the "aqua" theme ignores custom colors
         s.configure(".", background=WHITE, foreground=TEXT, font=self.f["base"],
                     bordercolor=ORANGE_LINE, focuscolor=ORANGE)
 
@@ -214,12 +214,12 @@ class App(tk.Tk):
         ttk.Label(header, text="Peter Lynch Fair Value", style="HeaderTitle.TLabel").pack(
             anchor="w")
         self.header_sub = ttk.Label(
-            header, text="Valoarea corectă a unei acțiuni: P/E corect = rata de creștere "
-                         "a profitului (PEG = 1)", style="HeaderSub.TLabel")
+            header, text="A stock's fair value: fair P/E = earnings growth rate (PEG = 1)",
+            style="HeaderSub.TLabel")
         self.header_sub.pack(anchor="w")
 
     def _build_scroll_area(self):
-        """Tab-ul de evaluare derulează vertical când conținutul nu încape."""
+        """The valuation tab scrolls vertically when its content does not fit."""
         tab = self.eval_tab
         self.canvas = tk.Canvas(tab, bg=PAGE, highlightthickness=0, borderwidth=0)
         self.vscroll = ttk.Scrollbar(tab, orient="vertical", command=self.canvas.yview)
@@ -233,7 +233,7 @@ class App(tk.Tk):
     def _fit_body(self):
         cw, ch = self.canvas.winfo_width(), self.canvas.winfo_height()
         need = self.eval_body.winfo_reqheight()
-        # Conținutul umple cel puțin înălțimea vizibilă, ca să se întindă cardurile.
+        # The content fills at least the visible height, so the cards stretch.
         self.canvas.itemconfigure(self.body_window, width=cw, height=max(need, ch))
         self.canvas.configure(scrollregion=(0, 0, cw, max(need, ch)))
         overflow = need > ch + 1
@@ -277,7 +277,7 @@ class App(tk.Tk):
         w, h = self.winfo_width(), self.winfo_height()
         if w < 50:
             return
-        # Fonturile urmează mărimea ferestrei, în pași de 5%, între 80% și 115%.
+        # Fonts follow the window size, in 5% steps, between 80% and 115%.
         scale = min(w / DESIGN_W, h / DESIGN_H)
         scale = round(max(0.8, min(1.15, scale)) * 20) / 20
         if scale != self.scale:
@@ -335,7 +335,7 @@ class App(tk.Tk):
             self.explain_label.configure(wraplength=rw)
             for label in self.row_labels:
                 label.configure(wraplength=max(120, int(rw * 0.62)))
-            # Verdictul trece sub valoare când nu mai încape alături.
+            # The verdict moves below the value when it no longer fits beside it.
             narrow = rw < self.fair_label.winfo_reqwidth() + self.verdict_label.winfo_reqwidth() + 20
             if narrow:
                 self.verdict_label.grid(row=3, column=0, columnspan=2, sticky="w", pady=(6, 0))
@@ -368,11 +368,11 @@ class App(tk.Tk):
             row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
         return card
 
-    # ---------- Tab: evaluare ----------
+    # ---------- Tab: valuation ----------
     def _build_eval_tab(self):
         body = self.eval_body
 
-        form = self._card(body, "Date companie")
+        form = self._card(body, "Company data")
         self.form_card = form
         form.columnconfigure(0, weight=1, uniform="formcol")
         form.columnconfigure(1, weight=1, uniform="formcol")
@@ -387,8 +387,8 @@ class App(tk.Tk):
             "dividend": tk.StringVar(),
         }
         self.cap_var = tk.BooleanVar(value=True)
-        # (widget, rând, coloană, colspan, pady) pentru aranjarea pe două coloane;
-        # pe o coloană se păstrează aceeași ordine.
+        # (widget, row, column, colspan, pady) for the two-column layout;
+        # the single-column layout keeps the same order.
         self.form_items = []
 
         def place(widget, row, col, span=1, pady=5, sticky="we"):
@@ -406,23 +406,23 @@ class App(tk.Tk):
             place(box, row, col, colspan)
             return entry
 
-        field(1, 0, "company", "Nume companie *", "ex. Apple Inc.", colspan=2).focus_set()
-        field(2, 0, "ticker", "Ticker", "opțional")
+        field(1, 0, "company", "Company name *", "e.g. Apple Inc.", colspan=2).focus_set()
+        field(2, 0, "ticker", "Ticker", "optional")
 
         cur_box = ttk.Frame(form, style="Plain.TFrame")
-        ttk.Label(cur_box, text="Monedă", style="Field.TLabel").pack(anchor="w")
+        ttk.Label(cur_box, text="Currency", style="Field.TLabel").pack(anchor="w")
         ttk.Combobox(cur_box, textvariable=self.vars["currency"], values=CURRENCIES,
                      font=self.f["base"], width=6, state="readonly").pack(fill="x", pady=(3, 0))
         place(cur_box, 2, 1)
 
-        field(3, 0, "price", "Preț curent *", "bursă")
-        field(3, 1, "eps", "EPS (TTM) *", "12 luni")
-        field(4, 0, "growth", "Creștere EPS % *", "3–5 ani")
-        field(4, 1, "dividend", "Dividend / acț.", "anual")
+        field(3, 0, "price", "Current price *", "market")
+        field(3, 1, "eps", "EPS (TTM) *", "12 months")
+        field(4, 0, "growth", "EPS growth % *", "3–5 years")
+        field(4, 1, "dividend", "Dividend / share", "annual")
 
-        place(ttk.Checkbutton(form, text=f"Plafonează creșterea la {GROWTH_CAP:g}% (recomandat)",
+        place(ttk.Checkbutton(form, text=f"Cap growth at {GROWTH_CAP:g}% (recommended)",
                               variable=self.cap_var), 5, 0, 2, (10, 4), sticky="w")
-        place(ttk.Label(form, text="Note", style="Field.TLabel"), 6, 0, 2, (8, 3), sticky="w")
+        place(ttk.Label(form, text="Notes", style="Field.TLabel"), 6, 0, 2, (8, 3), sticky="w")
         self.notes = tk.Text(form, height=3, width=20, wrap="word", font=self.f["base"], bg=WHITE,
                              fg=TEXT, insertbackground=TEXT, relief="flat",
                              highlightthickness=1, highlightbackground=ORANGE_LINE,
@@ -431,27 +431,27 @@ class App(tk.Tk):
         place(self.notes, 7, 0, 2, 0)
 
         buttons = ttk.Frame(form, style="Plain.TFrame")
-        ttk.Button(buttons, text="Calculează", style="Accent.TButton",
+        ttk.Button(buttons, text="Calculate", style="Accent.TButton",
                    command=self.on_calculate).pack(side="left")
-        self.save_btn = ttk.Button(buttons, text="Salvează", style="Ghost.TButton",
+        self.save_btn = ttk.Button(buttons, text="Save", style="Ghost.TButton",
                                    command=self.on_save, state="disabled")
         self.save_btn.pack(side="left", padx=8)
-        ttk.Button(buttons, text="Golește", style="Ghost.TButton",
+        ttk.Button(buttons, text="Clear", style="Ghost.TButton",
                    command=self.on_reset).pack(side="right")
         place(buttons, 8, 0, 2, (18, 0))
-        place(ttk.Label(form, text="Enter = calculează  ·  ⌘S = salvează", style="Muted.TLabel"),
+        place(ttk.Label(form, text="Enter = calculate  ·  ⌘S = save", style="Muted.TLabel"),
               9, 0, 2, (10, 0), sticky="w")
 
         self.bind("<Return>", lambda e: None if e.widget is self.notes else self.on_calculate())
         self.bind("<Command-s>", lambda _e: self.on_save())
 
-        # Rezultate
-        results = self._card(body, "Rezultat")
+        # Results
+        results = self._card(body, "Result")
         self.results_card = results
         results.columnconfigure(0, weight=1)
         results.columnconfigure(1, weight=1)
 
-        self.company_label = ttk.Label(results, text="Completează datele și apasă Calculează",
+        self.company_label = ttk.Label(results, text="Fill in the data and press Calculate",
                                        style="Muted.TLabel")
         self.company_label.grid(row=1, column=0, columnspan=2, sticky="w")
         self.fair_label = ttk.Label(results, text="—", style="Big.TLabel")
@@ -466,7 +466,7 @@ class App(tk.Tk):
         tiles = ttk.Frame(results, style="Plain.TFrame")
         tiles.grid(row=5, column=0, columnspan=2, sticky="we", pady=(14, 8))
         self.tiles = {}
-        for i, (key, title) in enumerate([("upside", "Potențial"), ("peg", "PEG"),
+        for i, (key, title) in enumerate([("upside", "Upside"), ("peg", "PEG"),
                                           ("lynch", "Lynch ratio")]):
             tiles.columnconfigure(i, weight=1, uniform="tile")
             tile = ttk.Frame(tiles, style="Tile.TFrame", padding=(12, 10))
@@ -482,12 +482,12 @@ class App(tk.Tk):
         self.result_rows = {}
         self.row_labels = []
         rows = [
-            ("price", "Preț curent"),
-            ("basic", "Fair value fără dividend (EPS × creștere)"),
-            ("pe", "P/E curent"),
-            ("fair_pe", "P/E corect (creștere + randament dividend)"),
-            ("growth", "Creștere folosită în calcul"),
-            ("yield", "Randament dividend"),
+            ("price", "Current price"),
+            ("basic", "Fair value without dividend (EPS × growth)"),
+            ("pe", "Current P/E"),
+            ("fair_pe", "Fair P/E (growth + dividend yield)"),
+            ("growth", "Growth used in the calculation"),
+            ("yield", "Dividend yield"),
         ]
         for i, (key, label) in enumerate(rows, start=5):
             ttk.Separator(results).grid(row=i * 2, column=0, columnspan=2, sticky="we")
@@ -502,8 +502,8 @@ class App(tk.Tk):
                                     justify="left")
         self.warn_label.grid(row=40, column=0, columnspan=2, sticky="w", pady=(12, 0))
         results.rowconfigure(41, weight=1)
-        explain = ("Lynch ratio = (creștere + randament dividend) / P/E: sub 1 neatractivă, "
-                   "1.5 acceptabilă, peste 2 excelentă.")
+        explain = ("Lynch ratio = (growth + dividend yield) / P/E: below 1 unattractive, "
+                   "1.5 acceptable, above 2 excellent.")
         self.explain_label = ttk.Label(results, text=explain, style="Muted.TLabel",
                                        wraplength=500, justify="left")
         self.explain_label.grid(row=42, column=0, columnspan=2, sticky="sw", pady=(8, 0))
@@ -514,9 +514,9 @@ class App(tk.Tk):
             company=v["company"].get(),
             ticker=v["ticker"].get(),
             currency=v["currency"].get() or "USD",
-            price=parse_number(v["price"].get(), "Preț curent"),
+            price=parse_number(v["price"].get(), "Current price"),
             eps=parse_number(v["eps"].get(), "EPS"),
-            growth=parse_number(v["growth"].get(), "Creștere EPS"),
+            growth=parse_number(v["growth"].get(), "EPS growth"),
             dividend=parse_number(v["dividend"].get(), "Dividend", required=False),
             cap_growth=self.cap_var.get(),
             notes=self.notes.get("1.0", "end").strip(),
@@ -527,7 +527,7 @@ class App(tk.Tk):
             inp = self.read_form()
             res = calculate(inp)
         except ValueError as e:
-            messagebox.showerror("Date invalide", str(e), parent=self)
+            messagebox.showerror("Invalid data", str(e), parent=self)
             return
         self.last = (inp, res)
         self.show_result(inp, res)
@@ -545,7 +545,7 @@ class App(tk.Tk):
 
         value, note = self.tiles["upside"]
         value.config(text=f"{res.upside_pct:+.1f}%", foreground=GREEN if up else RED)
-        note.config(text="față de prețul curent")
+        note.config(text="vs. current price")
         value, note = self.tiles["peg"]
         value.config(text=fmt(res.peg), foreground=GREEN if res.peg <= 1 else RED)
         note.config(text="ideal ≤ 1")
@@ -567,18 +567,18 @@ class App(tk.Tk):
     def on_save(self):
         if not self.last:
             return
-        # Recalculăm din formular, ca să nu salvăm date modificate după calcul.
+        # Recalculate from the form, so data edited after the calculation is not saved.
         try:
             inp = self.read_form()
             res = calculate(inp)
         except ValueError as e:
-            messagebox.showerror("Date invalide", str(e), parent=self)
+            messagebox.showerror("Invalid data", str(e), parent=self)
             return
         self.show_result(inp, res)
         self.storage.save(inp, res)
         self.refresh_history()
         self.save_btn.config(state="disabled", style="Ghost.TButton")
-        messagebox.showinfo("Salvat", f"Evaluarea pentru {inp.company.strip()} a fost salvată.",
+        messagebox.showinfo("Saved", f"The valuation for {inp.company.strip()} was saved.",
                             parent=self)
 
     def on_reset(self):
@@ -588,7 +588,7 @@ class App(tk.Tk):
         self.notes.delete("1.0", "end")
         self.last = None
         self.save_btn.config(state="disabled", style="Ghost.TButton")
-        self.company_label.config(text="Completează datele și apasă Calculează")
+        self.company_label.config(text="Fill in the data and press Calculate")
         self.fair_label.config(text="—")
         self.verdict_label.config(text="", bg=WHITE)
         for value, note in self.tiles.values():
@@ -598,7 +598,7 @@ class App(tk.Tk):
             label.config(text="—")
         self.warn_label.config(text="")
 
-    # ---------- Tab: istoric ----------
+    # ---------- Tab: history ----------
     def _build_history_tab(self):
         tab = self.history_tab
         card = ttk.Frame(tab, style="Card.TFrame", padding=20)
@@ -606,19 +606,19 @@ class App(tk.Tk):
 
         top = ttk.Frame(card, style="Plain.TFrame")
         top.pack(fill="x")
-        ttk.Label(top, text="Evaluări salvate", style="Section.TLabel").pack(side="left")
+        ttk.Label(top, text="Saved valuations", style="Section.TLabel").pack(side="left")
         self.search_var = tk.StringVar()
         self.search_var.trace_add("write", lambda *_: self.refresh_history())
         self.search_entry = ttk.Entry(top, textvariable=self.search_var, width=18,
                                       font=self.f["base"])
         self.search_entry.pack(side="right", padx=(12, 0))
-        self.search_hint = ttk.Label(top, text="Caută companie / ticker", style="Muted.TLabel")
+        self.search_hint = ttk.Label(top, text="Search company / ticker", style="Muted.TLabel")
         self.search_hint.pack(side="right", padx=8)
 
         cols = [
-            ("created_at", "Data", 150), ("company", "Companie", 170), ("ticker", "Ticker", 70),
-            ("price", "Preț", 100), ("eps", "EPS", 65), ("growth", "Creștere %", 90),
-            ("fair_value", "Fair value", 110), ("upside_pct", "Potențial", 85),
+            ("created_at", "Date", 150), ("company", "Company", 170), ("ticker", "Ticker", 70),
+            ("price", "Price", 100), ("eps", "EPS", 65), ("growth", "Growth %", 90),
+            ("fair_value", "Fair value", 110), ("upside_pct", "Upside", 85),
             ("lynch_ratio", "Lynch", 65), ("verdict", "Verdict", 170),
         ]
         frame = ttk.Frame(card, style="Plain.TFrame")
@@ -640,15 +640,15 @@ class App(tk.Tk):
 
         self.bottom = ttk.Frame(card, style="Plain.TFrame")
         self.bottom.pack(fill="x")
-        ttk.Button(self.bottom, text="Reevaluează", style="Accent.TButton",
+        ttk.Button(self.bottom, text="Re-evaluate", style="Accent.TButton",
                    command=self.on_load).pack(side="left")
-        ttk.Button(self.bottom, text="Șterge", style="Ghost.TButton",
+        ttk.Button(self.bottom, text="Delete", style="Ghost.TButton",
                    command=self.on_delete).pack(side="left", padx=8)
-        ttk.Button(self.bottom, text="Exportă CSV…", style="Ghost.TButton",
+        ttk.Button(self.bottom, text="Export CSV…", style="Ghost.TButton",
                    command=self.on_export).pack(side="left")
-        # Pe ferestre înguste butonul Finder trece pe al doilea rând.
+        # On narrow windows the Finder button moves to a second row.
         self.bottom2 = ttk.Frame(card, style="Plain.TFrame")
-        self.finder_btn = ttk.Button(card, text="Arată baza de date în Finder",
+        self.finder_btn = ttk.Button(card, text="Show database in Finder",
                                      style="Ghost.TButton",
                                      command=lambda: subprocess.run(["open", "-R", str(DB_PATH)]))
         self.finder_btn.pack(side="right", in_=self.bottom)
@@ -672,7 +672,7 @@ class App(tk.Tk):
     def selected_id(self):
         sel = self.tree.selection()
         if not sel:
-            messagebox.showinfo("Selectează", "Selectează mai întâi o evaluare din listă.",
+            messagebox.showinfo("Select", "Please select a valuation from the list first.",
                                 parent=self)
             return None
         return int(sel[0])
@@ -700,22 +700,22 @@ class App(tk.Tk):
         if eval_id is None:
             return
         r = self.storage.get(eval_id)
-        if messagebox.askyesno("Șterge evaluarea",
-                               f"Ștergi evaluarea pentru {r['company']} din {r['created_at']}?",
+        if messagebox.askyesno("Delete valuation",
+                               f"Delete the valuation for {r['company']} from {r['created_at']}?",
                                parent=self):
             self.storage.delete(eval_id)
             self.refresh_history()
 
     def on_export(self):
         dest = filedialog.asksaveasfilename(
-            parent=self, defaultextension=".csv", initialfile="evaluari_lynch.csv",
+            parent=self, defaultextension=".csv", initialfile="lynch_valuations.csv",
             filetypes=[("CSV", "*.csv")])
         if not dest:
             return
         count = self.storage.export_csv(Path(dest), self.search_var.get())
-        messagebox.showinfo("Export", f"Am exportat {count} evaluări în:\n{dest}", parent=self)
+        messagebox.showinfo("Export", f"Exported {count} valuations to:\n{dest}", parent=self)
 
 
 if __name__ == "__main__":
-    os.umask(0o077)  # fișierele create de aplicație sunt accesibile doar utilizatorului
+    os.umask(0o077)  # files created by the app are accessible only to the current user
     App().mainloop()
