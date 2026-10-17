@@ -1,0 +1,19 @@
+# Mediu virtual și rezultatele build-ului py2app
+.venv/
+venv/
+build/
+dist/
+*.app/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Date personale: baze de date și exporturi
+*.db
+*.db-journal
+*.sqlite
+*.csv
+
+# macOS
+.DS_Store

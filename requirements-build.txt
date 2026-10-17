@@ -1,0 +1,16 @@
+# Dependențe pentru construirea aplicației .app (aplicația în sine folosește doar
+# biblioteca standard Python). Versiuni și hash-uri fixate: pip refuză orice fișier
+# care diferă, deci un pachet modificat pe PyPI nu poate ajunge în build.
+# Instalare: .venv/bin/pip install --require-hashes -r requirements-build.txt
+altgraph==0.17.5 \
+    --hash=sha256:f3a22400bce1b0c701683820ac4f3b159cd301acab067c51c653e06961600597
+macholib==1.16.4 \
+    --hash=sha256:da1a3fa8266e30f0ce7e97c6a54eefaae8edd1e5f86f3eb8b95457cae90265ea
+modulegraph==0.19.7 \
+    --hash=sha256:139f89042c9912777ba4bbf1d5496591c6ad780110ea3082c11e8737cf82cacc
+packaging==26.3 \
+    --hash=sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c
+py2app==0.28.10 \
+    --hash=sha256:bdb0cd2cbfa5160b5b11b8d612f6eb92d484a0282801e85b159f1930cd834714
+setuptools==84.0.0 \
+    --hash=sha256:51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670
