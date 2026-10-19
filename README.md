@@ -3,6 +3,23 @@
 A macOS desktop app (Python + Tkinter) that calculates a stock's fair value using
 Peter Lynch's formula and saves every valuation together with the date it was made.
 
+## Installation
+
+On a Mac with [Homebrew](https://brew.sh):
+
+```bash
+brew install python@3.14 python-tk@3.14
+```
+
+Then, from the cloned folder:
+
+```bash
+./install.sh
+```
+
+The script creates a build environment, runs the tests, builds the app and installs it
+in /Applications. Run it again after pulling new changes to update the app.
+
 ## Getting started
 
 Once built and installed, the app lives in **/Applications/Peter Lynch Fair Value.app**:
@@ -17,7 +34,9 @@ For development you can run it straight from the source: double-click `start.com
 /opt/homebrew/bin/python3.14 app.py
 ```
 
-## Rebuilding the .app (after code changes)
+## Rebuilding the .app manually
+
+`./install.sh` does all of this for you; these are the equivalent manual steps.
 
 ```bash
 python3.14 -m venv .venv && .venv/bin/pip install --require-hashes -r requirements-build.txt

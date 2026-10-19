@@ -3,6 +3,7 @@
 venv/
 build/
 dist/
+build.log
 *.app/
 
 # Python
